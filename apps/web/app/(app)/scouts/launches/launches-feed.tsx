@@ -90,8 +90,14 @@ function LaunchCard({ launch }: { launch: LaunchView }) {
   return (
     <div
       className="card"
-      style={{ padding: 18, display: "flex", flexDirection: "column", gap: 10 }}
+      style={{ padding: 18, display: "flex", flexDirection: "column", gap: 10, position: "relative" }}
     >
+      <a
+        href={`/scouts/project/${launch.tokenAddress}`}
+        aria-label={`View ${launch.tokenAddress}`}
+        style={{ position: "absolute", inset: 0 }}
+      />
+
       <div className="mono" style={{ fontSize: 13, color: "var(--text)" }}>
         {short(launch.tokenAddress)}
       </div>
@@ -126,7 +132,15 @@ function LaunchCard({ launch }: { launch: LaunchView }) {
         href={explorerUrl}
         target="_blank"
         rel="noreferrer"
-        style={{ fontSize: 12, color: "var(--muted)", display: "inline-flex", alignItems: "center", gap: 4 }}
+        style={{
+          fontSize: 12,
+          color: "var(--muted)",
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 4,
+          position: "relative",
+          zIndex: 1,
+        }}
       >
         <svg className="icon" style={{ width: 12, height: 12 }}>
           <use href="#i-link" />
