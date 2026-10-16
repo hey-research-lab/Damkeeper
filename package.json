@@ -23,6 +23,7 @@
     "db:generate": "npm run db:generate --workspace=apps/web",
     "db:migrate": "npm run db:migrate --workspace=apps/web",
     "contracts:build": "cd packages/contracts && forge build",
-    "contracts:test": "cd packages/contracts && forge test -vvv"
+    "contracts:test": "cd packages/contracts && forge test -vvv",
+    "indexer": "npm run start --workspace=packages/indexer"
   }
 }

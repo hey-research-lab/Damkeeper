@@ -185,6 +185,28 @@ export const airdropCampaigns = pgTable("airdrop_campaigns", {
   byToken: index("airdrop_campaigns_by_token").on(t.chainId, t.token),
 }));
 
+// One row per detected token launch from an approved launchpad/factory
+// (e.g. Pons). Populated by the Scouts launch indexer; see brief §7.1, §15.
+export const projectLaunches = pgTable("project_launches", {
+  chainId: integer("chain_id").notNull(),
+  tokenAddress: text("token_address").notNull(),
+  creatorAddress: text("creator_address").notNull(),
+  factoryAddress: text("factory_address").notNull(),
+  source: text("source").notNull(), // e.g. 'pons_v1' | 'pons_v2'
+  launchTxHash: text("launch_tx_hash").notNull(),
+  launchBlock: bigint("launch_block", { mode: "bigint" }).notNull(),
+  logIndex: integer("log_index").notNull(),
+  launchedAt: bigint("launched_at", { mode: "bigint" }).notNull(), // onchain timestamp
+  pairAddress: text("pair_address"),
+  liquidityToken: text("liquidity_token"),
+  status: text("status").default("pending").notNull(), // 'pending' | 'confirmed' | 'reorged'
+  metadataStatus: text("metadata_status").default("pending").notNull(), // 'pending' | 'enriched' | 'failed'
+}, (t) => ({
+  pk: primaryKey({ columns: [t.chainId, t.launchTxHash, t.logIndex] }),
+  byToken: index("project_launches_by_token").on(t.chainId, t.tokenAddress),
+  byCreator: index("project_launches_by_creator").on(t.chainId, t.creatorAddress),
+}));
+
 export const airdropRecipients = pgTable("airdrop_recipients", {
   chainId: integer("chain_id").notNull(),
   campaignId: text("campaign_id").notNull(),
