@@ -60,9 +60,9 @@ async function indexSource(
       .insert(schema.projectLaunches)
       .values({
         chainId: launchSource.chainId,
-        tokenAddress: token,
-        creatorAddress: creator,
-        factoryAddress: launchSource.factoryAddress,
+        tokenAddress: token.toLowerCase(),
+        creatorAddress: creator.toLowerCase(),
+        factoryAddress: launchSource.factoryAddress.toLowerCase(),
         source: launchSource.source,
         launchTxHash: log.transactionHash!,
         launchBlock: log.blockNumber!,
