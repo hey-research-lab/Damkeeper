@@ -1,0 +1,10 @@
+import { createPublicClient, http } from "viem";
+import { robinhoodMainnet } from "../lib/chains";
+const client = createPublicClient({ chain: robinhoodMainnet, transport: http() });
+const latest = await client.getBlock();
+const earlier = await client.getBlock({ blockNumber: latest.number - 1000n });
+const blockDiff = latest.number - earlier.number;
+const timeDiff = latest.timestamp - earlier.timestamp;
+console.log("blocks:", blockDiff.toString(), "seconds:", timeDiff.toString());
+console.log("blocks/sec:", Number(blockDiff) / Number(timeDiff));
+console.log("avg block time (s):", Number(timeDiff) / Number(blockDiff));

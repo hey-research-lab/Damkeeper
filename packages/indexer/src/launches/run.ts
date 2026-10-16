@@ -8,6 +8,19 @@ import { PONS_SOURCES, TokenLaunched } from "./pons";
 // eth_getLogs to a 10-block window (fromBlock to fromBlock + 9n).
 const MAX_BLOCK_RANGE = 9n;
 
+// Robinhood Chain produces blocks fast enough that scanning from a factory's
+// deploy block would take years to reach the tip at MAX_BLOCK_RANGE/tick.
+// This product only needs *new* launches, so a missing checkpoint starts
+// near the tip instead of from history — old launches before this point
+// are simply not backfilled.
+const INITIAL_BACKFILL_BLOCKS = 2000n;
+
+// Measured ~10 blocks/sec (2026-10-17) — a single 9-block getLogs call per
+// 60s tick would fall further behind every tick, forever. Loop multiple
+// windows per tick instead; 150 windows (1350 blocks) comfortably covers
+// one tick's ~600 new blocks with headroom for RPC jitter.
+const MAX_WINDOWS_PER_TICK = 150;
+
 export async function runLaunchIndexer() {
   for (const launchSource of PONS_SOURCES) {
     const chain = chainById(launchSource.chainId);
@@ -39,71 +52,85 @@ async function indexSource(
     )
     .limit(1);
 
-  const fromBlock = checkpoint ? checkpoint.lastBlock + 1n : launchSource.deployBlock;
-  if (fromBlock > latestBlock) return; // nothing new yet
-
-  const toBlock =
-    fromBlock + MAX_BLOCK_RANGE < latestBlock ? fromBlock + MAX_BLOCK_RANGE : latestBlock;
-
-  const logs = await client.getLogs({
-    address: launchSource.factoryAddress,
-    event: TokenLaunched,
-    fromBlock,
-    toBlock,
-  });
+  let fromBlock = checkpoint
+    ? checkpoint.lastBlock + 1n
+    : latestBlock > INITIAL_BACKFILL_BLOCKS
+      ? latestBlock - INITIAL_BACKFILL_BLOCKS
+      : launchSource.deployBlock;
 
   // TokenLaunched carries no timestamp, so fetch each distinct block's time.
-  // The range is capped at 10 blocks, so this is at most 10 extra RPC calls.
   const blockTimestamps = new Map<bigint, bigint>();
+  let totalIndexed = 0;
+  let lastToBlock = fromBlock - 1n;
+  let ranAny = false;
 
-  for (const log of logs) {
-    const { token, deployer, pairToken } = log.args;
-    if (!token || !deployer || !log.blockNumber) continue;
+  for (let i = 0; i < MAX_WINDOWS_PER_TICK && fromBlock <= latestBlock; i++) {
+    ranAny = true;
+    const toBlock =
+      fromBlock + MAX_BLOCK_RANGE < latestBlock ? fromBlock + MAX_BLOCK_RANGE : latestBlock;
 
-    if (!blockTimestamps.has(log.blockNumber)) {
-      const block = await client.getBlock({ blockNumber: log.blockNumber });
-      blockTimestamps.set(log.blockNumber, block.timestamp);
+    const logs = await client.getLogs({
+      address: launchSource.factoryAddress,
+      event: TokenLaunched,
+      fromBlock,
+      toBlock,
+    });
+
+    for (const log of logs) {
+      const { token, deployer, pairToken } = log.args;
+      if (!token || !deployer || !log.blockNumber) continue;
+
+      if (!blockTimestamps.has(log.blockNumber)) {
+        const block = await client.getBlock({ blockNumber: log.blockNumber });
+        blockTimestamps.set(log.blockNumber, block.timestamp);
+      }
+
+      await db
+        .insert(schema.projectLaunches)
+        .values({
+          chainId: launchSource.chainId,
+          tokenAddress: token.toLowerCase(),
+          creatorAddress: deployer.toLowerCase(),
+          factoryAddress: launchSource.factoryAddress.toLowerCase(),
+          source: launchSource.source,
+          launchTxHash: log.transactionHash!,
+          launchBlock: log.blockNumber,
+          logIndex: log.logIndex!,
+          launchedAt: blockTimestamps.get(log.blockNumber)!,
+          pairAddress: pairToken ?? null,
+          status: "confirmed",
+        })
+        .onConflictDoNothing();
     }
 
-    await db
-      .insert(schema.projectLaunches)
-      .values({
-        chainId: launchSource.chainId,
-        tokenAddress: token.toLowerCase(),
-        creatorAddress: deployer.toLowerCase(),
-        factoryAddress: launchSource.factoryAddress.toLowerCase(),
-        source: launchSource.source,
-        launchTxHash: log.transactionHash!,
-        launchBlock: log.blockNumber,
-        logIndex: log.logIndex!,
-        launchedAt: blockTimestamps.get(log.blockNumber)!,
-        pairAddress: pairToken ?? null,
-        status: "confirmed",
-      })
-      .onConflictDoNothing();
+    totalIndexed += logs.length;
+    lastToBlock = toBlock;
+    fromBlock = toBlock + 1n;
   }
 
-  const lastBlockData = await client.getBlock({ blockNumber: toBlock });
+  if (!ranAny) return; // already caught up, nothing new yet
+
+  const lastBlockData = await client.getBlock({ blockNumber: lastToBlock });
 
   await db
     .insert(schema.chainCheckpoints)
     .values({
       chainId: launchSource.chainId,
       managerAddress: launchSource.factoryAddress,
-      lastBlock: toBlock,
+      lastBlock: lastToBlock,
       lastBlockHash: lastBlockData.hash,
       confirmationTier: "l1_final",
     })
     .onConflictDoUpdate({
       target: [schema.chainCheckpoints.chainId, schema.chainCheckpoints.managerAddress],
       set: {
-        lastBlock: toBlock,
+        lastBlock: lastToBlock,
         lastBlockHash: lastBlockData.hash,
         updatedAt: new Date(),
       },
     });
 
-  if (logs.length > 0) {
-    console.log(`[launches/${launchSource.source}] indexed ${logs.length} launch(es) up to block ${toBlock}`);
-  }
+  console.log(
+    `[launches/${launchSource.source}] scanned to block ${lastToBlock} (tip ${latestBlock}), indexed ${totalIndexed} launch(es)`
+  );
 }
