@@ -52,22 +52,32 @@ async function indexSource(
     toBlock,
   });
 
+  // TokenLaunched carries no timestamp, so fetch each distinct block's time.
+  // The range is capped at 10 blocks, so this is at most 10 extra RPC calls.
+  const blockTimestamps = new Map<bigint, bigint>();
+
   for (const log of logs) {
-    const { token, creator } = log.args;
-    if (!token || !creator) continue;
+    const { token, deployer, pairToken } = log.args;
+    if (!token || !deployer || !log.blockNumber) continue;
+
+    if (!blockTimestamps.has(log.blockNumber)) {
+      const block = await client.getBlock({ blockNumber: log.blockNumber });
+      blockTimestamps.set(log.blockNumber, block.timestamp);
+    }
 
     await db
       .insert(schema.projectLaunches)
       .values({
         chainId: launchSource.chainId,
         tokenAddress: token.toLowerCase(),
-        creatorAddress: creator.toLowerCase(),
+        creatorAddress: deployer.toLowerCase(),
         factoryAddress: launchSource.factoryAddress.toLowerCase(),
         source: launchSource.source,
         launchTxHash: log.transactionHash!,
-        launchBlock: log.blockNumber!,
+        launchBlock: log.blockNumber,
         logIndex: log.logIndex!,
-        launchedAt: log.args.timestamp ?? 0n,
+        launchedAt: blockTimestamps.get(log.blockNumber)!,
+        pairAddress: pairToken ?? null,
         status: "confirmed",
       })
       .onConflictDoNothing();
