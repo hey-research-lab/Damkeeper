@@ -86,7 +86,16 @@ export default async function ScoutsProjectPage({
         <Field label="Token address" value={launch.tokenAddress} />
         <Field label="Deployer / creator" value={launch.creatorAddress} />
         <Field label="Launch factory" value={launch.factoryAddress} />
-        {launch.pairAddress && <Field label="Quote asset" value={launch.pairAddress} />}
+        {launch.pairAddress && (
+          <Field
+            label="Quote asset"
+            value={
+              launch.pairAddress === "0x0000000000000000000000000000000000000000"
+                ? "ETH (native)"
+                : launch.pairAddress
+            }
+          />
+        )}
         <Field label="Launch block" value={launch.launchBlock} />
         <div style={{ marginTop: 12 }}>
           <a
