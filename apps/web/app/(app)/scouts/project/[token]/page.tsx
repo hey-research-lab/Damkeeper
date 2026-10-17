@@ -50,11 +50,12 @@ export default async function ScoutsProjectPage({
   const initial = (launch.tokenSymbol ?? launch.tokenName ?? "?").charAt(0).toUpperCase();
 
   return (
-    <main className="wrap" style={{ maxWidth: 820 }}>
+    <main className="wrap">
       <Link href="/scouts/launches" className="back-link">
         ← Back to launches
       </Link>
 
+      <div style={{ maxWidth: 640, margin: "0 auto" }}>
       <div style={{ marginTop: 16, marginBottom: 28, display: "flex", alignItems: "center", gap: 14 }}>
         <span className="tok-ic" style={{ width: 44, height: 44, fontSize: 18 }}>
           {launch.tokenImage ? <img src={launch.tokenImage} alt="" /> : initial}
@@ -121,6 +122,7 @@ export default async function ScoutsProjectPage({
         <p style={{ fontSize: 13, color: "var(--muted)", margin: 0 }}>
           No verified lock, vesting, or staking activity for this project yet.
         </p>
+      </div>
       </div>
     </main>
   );
