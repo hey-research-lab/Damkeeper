@@ -53,9 +53,12 @@ export default async function ScoutsProjectPage({
       </a>
 
       <div style={{ marginTop: 16, marginBottom: 28 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <h1 className="mono" style={{ fontSize: 22, fontWeight: 700, margin: 0, color: "var(--text)" }}>
-            {launch.tokenAddress}
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+          <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0, color: "var(--text)" }}>
+            {launch.tokenName ?? "Unnamed token"}
+            {launch.tokenSymbol && (
+              <span style={{ color: "var(--muted)", fontWeight: 400 }}> · {launch.tokenSymbol}</span>
+            )}
           </h1>
           <span
             className="chip"
@@ -68,7 +71,10 @@ export default async function ScoutsProjectPage({
             {SOURCE_LABEL[launch.source] ?? launch.source}
           </span>
         </div>
-        <p style={{ fontSize: 13, color: "var(--muted)", margin: "6px 0 0" }}>
+        <p className="mono" style={{ fontSize: 12, color: "var(--muted)", margin: "6px 0 0" }}>
+          {launch.tokenAddress}
+        </p>
+        <p style={{ fontSize: 13, color: "var(--muted)", margin: "4px 0 0" }}>
           Launched {timeAgo(launch.launchedAt)}
         </p>
       </div>

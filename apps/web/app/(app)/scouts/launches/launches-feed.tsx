@@ -103,8 +103,16 @@ function LaunchCard({ launch }: { launch: LaunchView }) {
         style={{ position: "absolute", inset: 0 }}
       />
 
-      <div className="mono" style={{ fontSize: 13, color: "var(--text)" }}>
-        {short(launch.tokenAddress)}
+      <div>
+        <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text)" }}>
+          {launch.tokenName ?? "Unnamed token"}
+          {launch.tokenSymbol && (
+            <span style={{ color: "var(--muted)", fontWeight: 400 }}> · {launch.tokenSymbol}</span>
+          )}
+        </div>
+        <div className="mono" style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>
+          {short(launch.tokenAddress)}
+        </div>
       </div>
 
       <span
