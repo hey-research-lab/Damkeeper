@@ -1,10 +1,10 @@
-import { and, eq, gt } from "drizzle-orm";
+import { and, eq, gt, or } from "drizzle-orm";
 import { db } from "@/db/client";
-import { referrals, positions, conversions } from "@/db/schema";
+import { referrals, positions, stakingPools, conversions } from "@/db/schema";
 
 // Brief §10 "Suggested scoring model" — testnet simulation values only, not
 // token payouts.
-const BASE_POINTS: Record<string, number> = { lock: 100, vesting: 150 };
+const BASE_POINTS: Record<string, number> = { lock: 100, vesting: 150, staking: 200 };
 
 // Brief §9 recommended initial thresholds.
 const MIN_DURATION_SECONDS = 30n * 24n * 60n * 60n; // 30 days
@@ -79,7 +79,7 @@ export async function reconcileConversions(): Promise<ReconcileResult> {
         const duration = (position.endTime ?? 0n) - (position.startTime ?? position.createdAt);
         if (duration < MIN_DURATION_SECONDS) rejectionReason = "vesting duration below 30-day minimum";
       } else {
-        continue; // staking funding isn't tracked yet — see brief §9, not implemented
+        continue;
       }
 
       if (BigInt(position.amount) <= 0n) rejectionReason = "dust amount";
@@ -100,6 +100,64 @@ export async function reconcileConversions(): Promise<ReconcileResult> {
 
       if (status === "verified") result.verified++;
       else result.rejected++;
+    }
+
+    // Staking lives in a separate table (one row per pool, not per
+    // position) — matched and scored here rather than in the loop above.
+    const candidatePools = await db
+      .select()
+      .from(stakingPools)
+      .where(
+        and(
+          eq(stakingPools.chainId, referral.chainId),
+          eq(stakingPools.creator, referral.projectOwner),
+          or(eq(stakingPools.stakingToken, referral.projectToken), eq(stakingPools.rewardToken, referral.projectToken)),
+          gt(stakingPools.createdAt, acceptedAtUnix)
+        )
+      );
+
+    for (const pool of candidatePools) {
+      if (expiresAtUnix && pool.createdAt > expiresAtUnix) continue;
+
+      const [existing] = await db
+        .select()
+        .from(conversions)
+        .where(
+          and(
+            eq(conversions.chainId, pool.chainId),
+            eq(conversions.managerAddress, pool.poolAddress),
+            eq(conversions.positionId, 0n)
+          )
+        )
+        .limit(1);
+      if (existing) continue;
+
+      const [alreadyRewardedCategory] = await db
+        .select()
+        .from(conversions)
+        .where(and(eq(conversions.referralId, referral.id), eq(conversions.kind, "staking"), eq(conversions.status, "verified")))
+        .limit(1);
+      if (alreadyRewardedCategory) continue;
+
+      // Brief §9: "Creating an empty staking pool must not generate a
+      // reward." rewardRate is only nonzero after notifyRewardAmount() has
+      // actually funded the pool. Funding can happen any time after
+      // deployment, so an unfunded pool isn't a final rejection — skip it
+      // without recording anything and let the next tick re-check it.
+      const funded = pool.rewardRate != null && BigInt(pool.rewardRate) > 0n;
+      if (!funded) continue;
+
+      await db.insert(conversions).values({
+        referralId: referral.id,
+        kind: "staking",
+        chainId: pool.chainId,
+        managerAddress: pool.poolAddress,
+        positionId: 0n,
+        status: "verified",
+        rewardPoints: BASE_POINTS.staking,
+      });
+
+      result.verified++;
     }
   }
 

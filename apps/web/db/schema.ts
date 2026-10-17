@@ -156,6 +156,12 @@ export const stakingPools = pgTable("staking_pools", {
   name: text("name").notNull(),
   createdAt: bigint("created_at", { mode: "bigint" }).notNull(),
   txHash: text("tx_hash"),
+  // Read directly from the pool contract (rewardRate, periodFinish are public
+  // state), not from an event — notifyRewardAmount() can be called any time
+  // after deployment, including via the CLI outside this web app, so there's
+  // no reliable write-path event to index instead. Refreshed each cron tick.
+  rewardRate: numeric("reward_rate", { precision: 78, scale: 0 }),
+  periodFinish: bigint("period_finish", { mode: "bigint" }),
 }, (t) => ({
   pk: primaryKey({ columns: [t.chainId, t.poolAddress] }),
   byStakingToken: index("staking_pools_by_staking_token").on(t.chainId, t.stakingToken),
