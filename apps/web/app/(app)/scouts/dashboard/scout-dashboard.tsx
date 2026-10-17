@@ -138,7 +138,7 @@ export function ScoutDashboard() {
                 <h2>No referrals yet</h2>
                 <p>
                   Browse <Link href="/scouts/launches">new launches</Link> and create a referral
-                  from a project's detail page.
+                  from a project&apos;s detail page.
                 </p>
               </div>
             ) : (

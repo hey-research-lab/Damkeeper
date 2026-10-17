@@ -72,8 +72,8 @@ export function ReferralSection({ projectToken, chainId }: ReferralSectionProps)
             <svg className="icon" style={{ width: 14, height: 14 }}>
               <use href="#i-check" />
             </svg>
-            Link created. Send it to this project's team — once they accept it and adopt
-            Damkeeper, you'll see it here on your{" "}
+            Link created. Send it to this project&apos;s team — once they accept it and adopt
+            Damkeeper, you&apos;ll see it here on your{" "}
             <a href="/scouts/dashboard" style={{ color: "var(--accent)", textDecoration: "underline" }}>
               dashboard
             </a>

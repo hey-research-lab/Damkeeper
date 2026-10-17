@@ -59,7 +59,7 @@ export function AcceptReferral({ referral }: { referral: ReferralView }) {
     return (
       <div className="card" style={{ padding: 20 }}>
         <p style={{ fontSize: 13, color: "var(--muted)", margin: 0 }}>
-          The referral registry contract isn't deployed on this environment yet. Check back soon.
+          The referral registry contract isn&apos;t deployed on this environment yet. Check back soon.
         </p>
       </div>
     );

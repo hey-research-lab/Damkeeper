@@ -23,7 +23,7 @@ export default async function ScoutRefPage({ params }: { params: Promise<{ code:
         Accept Scout referral
       </h1>
       <p style={{ fontSize: 14, color: "var(--muted)", margin: "8px 0 24px" }}>
-        A Scout has introduced your project to Damkeeper's lock, vesting, and staking
+        A Scout has introduced your project to Damkeeper&apos;s lock, vesting, and staking
         infrastructure. Accepting does not transfer funds or grant token approvals.
       </p>
 
