@@ -2,7 +2,11 @@ import { createPublicClient, http } from "viem";
 import { and, eq } from "drizzle-orm";
 import { db, schema } from "../db";
 import { chainById } from "../chains";
-import { PONS_SOURCES, TokenLaunched } from "./pons";
+import { PONS_SOURCES } from "./pons";
+import { POOLS_TRADE_SOURCES } from "./poolstrade";
+import type { LaunchSource } from "./types";
+
+const ALL_SOURCES: LaunchSource[] = [...PONS_SOURCES, ...POOLS_TRADE_SOURCES];
 
 // Same cap the existing Vercel cron indexer uses: Alchemy's free tier limits
 // eth_getLogs to a 10-block window (fromBlock to fromBlock + 9n).
@@ -22,7 +26,7 @@ const INITIAL_BACKFILL_BLOCKS = 2000n;
 const MAX_WINDOWS_PER_TICK = 150;
 
 export async function runLaunchIndexer() {
-  for (const launchSource of PONS_SOURCES) {
+  for (const launchSource of ALL_SOURCES) {
     const chain = chainById(launchSource.chainId);
     if (!chain) continue;
 
@@ -35,7 +39,7 @@ export async function runLaunchIndexer() {
 }
 
 async function indexSource(
-  launchSource: (typeof PONS_SOURCES)[number],
+  launchSource: LaunchSource,
   chain: NonNullable<ReturnType<typeof chainById>>
 ) {
   const client = createPublicClient({ chain, transport: http() });
@@ -58,8 +62,6 @@ async function indexSource(
       ? latestBlock - INITIAL_BACKFILL_BLOCKS
       : launchSource.deployBlock;
 
-  // TokenLaunched carries no timestamp, so fetch each distinct block's time.
-  const blockTimestamps = new Map<bigint, bigint>();
   let totalIndexed = 0;
   let lastToBlock = fromBlock - 1n;
   let ranAny = false;
@@ -70,15 +72,19 @@ async function indexSource(
       fromBlock + MAX_BLOCK_RANGE < latestBlock ? fromBlock + MAX_BLOCK_RANGE : latestBlock;
 
     const logs = await client.getLogs({
-      address: launchSource.factoryAddress,
-      event: TokenLaunched,
+      address: launchSource.factoryAddress as `0x${string}`,
+      event: launchSource.event,
       fromBlock,
       toBlock,
     });
 
+    const blockTimestamps = new Map<bigint, bigint>();
+
     for (const log of logs) {
-      const { token, deployer, pairToken } = log.args;
-      if (!token || !deployer || !log.blockNumber) continue;
+      if (!log.blockNumber || !log.transactionHash || log.logIndex == null) continue;
+
+      const decoded = await launchSource.extract(log, client);
+      if (!decoded) continue;
 
       if (!blockTimestamps.has(log.blockNumber)) {
         const block = await client.getBlock({ blockNumber: log.blockNumber });
@@ -89,15 +95,15 @@ async function indexSource(
         .insert(schema.projectLaunches)
         .values({
           chainId: launchSource.chainId,
-          tokenAddress: token.toLowerCase(),
-          creatorAddress: deployer.toLowerCase(),
+          tokenAddress: decoded.token.toLowerCase(),
+          creatorAddress: decoded.creator.toLowerCase(),
           factoryAddress: launchSource.factoryAddress.toLowerCase(),
           source: launchSource.source,
-          launchTxHash: log.transactionHash!,
+          launchTxHash: log.transactionHash,
           launchBlock: log.blockNumber,
-          logIndex: log.logIndex!,
+          logIndex: log.logIndex,
           launchedAt: blockTimestamps.get(log.blockNumber)!,
-          pairAddress: pairToken ?? null,
+          pairAddress: decoded.pairAddress,
           status: "confirmed",
         })
         .onConflictDoNothing();

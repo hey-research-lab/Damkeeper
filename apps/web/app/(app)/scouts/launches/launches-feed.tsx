@@ -10,6 +10,8 @@ interface LaunchesFeedProps {
 const SOURCE_LABEL: Record<string, string> = {
   pons_v2_active: "Pons V2",
   pons_legacy: "Pons Legacy",
+  pools_trade_current: "Pools.trade",
+  pools_trade_original: "Pools.trade",
 };
 
 function short(address: string) {
