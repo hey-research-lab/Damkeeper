@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useAccount, useConnect } from "wagmi";
 import type { ReferralView } from "@/lib/referrals";
 
@@ -12,6 +13,13 @@ interface ConversionView {
   rejectionReason: string | null;
   rewardPoints: number;
 }
+
+const STATUS_LABEL: Record<string, string> = {
+  created: "Awaiting acceptance",
+  accepted: "Accepted",
+  expired: "Expired",
+  revoked: "Revoked",
+};
 
 export function ScoutDashboard() {
   const { address, isConnected } = useAccount();
@@ -40,92 +48,161 @@ export function ScoutDashboard() {
   const accepted = referrals.filter((r) => r.status === "accepted").length;
   const verified = conversions.filter((c) => c.status === "verified").length;
   const rejected = conversions.filter((c) => c.status === "rejected");
-  const pending = accepted - conversions.length;
+  const pending = Math.max(accepted - conversions.length, 0);
 
   return (
-    <main className="main" style={{ padding: "32px 24px", maxWidth: 900, margin: "0 auto", width: "100%" }}>
-      <h1 style={{ fontSize: 28, fontWeight: 700, margin: 0, color: "var(--text)" }}>Scout Dashboard</h1>
-      <p style={{ fontSize: 14, color: "var(--muted)", margin: "6px 0 28px" }}>
-        Your referrals, verified conversions, and points.
-      </p>
+    <main className="wrap">
+      <div className="page-head">
+        <div className="page-eyebrow">
+          <span className="dot" />
+          Scouts
+        </div>
+        <h1>Scout dashboard</h1>
+        <p className="page-lede">
+          Your referrals, verified conversions, and points. Points are a testnet simulation —
+          not a $DAM payout.
+        </p>
+      </div>
 
       {!isConnected ? (
-        <button
-          type="button"
-          className="btn btn-primary"
-          onClick={() => {
-            const injected = connectors.find((c) => c.id === "injected") || connectors[0];
-            if (injected) connect({ connector: injected });
-          }}
-        >
-          Connect wallet
-        </button>
+        <div className="card">
+          <div className="empty-hero">
+            <span className="ic">
+              <svg className="icon-lg" aria-hidden="true">
+                <use href="#i-search" />
+              </svg>
+            </span>
+            <h2>Connect your wallet</h2>
+            <p>Your referrals are tied to your wallet address — connect to see them.</p>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => {
+                const injected = connectors.find((c) => c.id === "injected") || connectors[0];
+                if (injected) connect({ connector: injected });
+              }}
+            >
+              Connect wallet
+            </button>
+          </div>
+        </div>
+      ) : loading ? (
+        <div className="card">
+          <p style={{ color: "var(--muted)", fontSize: 13, textAlign: "center", padding: "20px 0" }}>
+            Loading…
+          </p>
+        </div>
       ) : (
         <>
-          <div style={{ display: "flex", gap: 16, marginBottom: 24, flexWrap: "wrap" }}>
-            <Stat label="Referrals created" value={created} />
-            <Stat label="Referrals accepted" value={accepted} />
-            <Stat label="Pending conversions" value={Math.max(pending, 0)} />
-            <Stat label="Verified conversions" value={verified} />
-            <Stat label="Points earned" value={pointsTotal} note="testnet, not $DAM" />
-            <Stat label="Claimable $DAM" value="—" note="Phase 4" />
+          <div className="metric-grid" style={{ marginBottom: 24 }}>
+            <div className="metric">
+              <span>Referrals created</span>
+              <strong>{created}</strong>
+            </div>
+            <div className="metric">
+              <span>Referrals accepted</span>
+              <strong>{accepted}</strong>
+            </div>
+            <div className="metric">
+              <span>Pending conversions</span>
+              <strong>{pending}</strong>
+            </div>
+            <div className="metric accent">
+              <span>Verified conversions</span>
+              <strong>{verified}</strong>
+            </div>
+            <div className="metric accent">
+              <span>Points earned</span>
+              <strong>{pointsTotal}</strong>
+              <small>testnet only</small>
+            </div>
+            <div className="metric">
+              <span>Claimable $DAM</span>
+              <strong>—</strong>
+              <small>Phase 4</small>
+            </div>
           </div>
 
-          {loading ? (
-            <p style={{ fontSize: 13, color: "var(--muted)" }}>Loading…</p>
-          ) : referrals.length === 0 ? (
-            <p style={{ fontSize: 13, color: "var(--muted)" }}>
-              No referrals yet. Create one from a project's detail page.
-            </p>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {referrals.map((r) => (
-                <div key={r.id} className="card" style={{ padding: 16 }}>
-                  <div className="mono" style={{ fontSize: 13, color: "var(--text)" }}>
-                    {r.projectToken}
-                  </div>
-                  <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>
-                    Status: <span style={{ color: r.status === "accepted" ? "var(--accent)" : "var(--text-2)" }}>
-                      {r.status}
-                    </span>
-                    {" · "}Created {new Date(r.createdAt).toLocaleDateString()}
-                  </div>
-                </div>
-              ))}
+          <section className="card">
+            <div className="card-head">
+              <h2>Your referrals</h2>
             </div>
-          )}
 
-          {rejected.length > 0 && (
-            <div style={{ marginTop: 28 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", marginBottom: 10 }}>
-                Rejected conversions
+            {referrals.length === 0 ? (
+              <div className="empty-hero">
+                <span className="ic">
+                  <svg className="icon-lg" aria-hidden="true">
+                    <use href="#i-link" />
+                  </svg>
+                </span>
+                <h2>No referrals yet</h2>
+                <p>
+                  Browse <Link href="/scouts/launches">new launches</Link> and create a referral
+                  from a project's detail page.
+                </p>
               </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {rejected.map((c) => (
-                  <div key={c.id} className="card" style={{ padding: 14 }}>
-                    <div className="mono" style={{ fontSize: 12, color: "var(--text-2)" }}>
-                      {c.projectToken} · {c.kind}
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {referrals.map((r) => (
+                  <div
+                    key={r.id}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: 16,
+                      padding: "14px 16px",
+                      border: "1px solid var(--hair)",
+                      borderRadius: 12,
+                      flexWrap: "wrap",
+                    }}
+                  >
+                    <div style={{ minWidth: 0 }}>
+                      <Link
+                        href={`/scouts/project/${r.projectToken}`}
+                        className="mono"
+                        style={{ fontSize: 13, color: "var(--text)" }}
+                      >
+                        {r.projectToken.slice(0, 10)}…{r.projectToken.slice(-6)}
+                      </Link>
+                      <div style={{ fontSize: 11, color: "var(--faint)", marginTop: 2 }}>
+                        Created {new Date(r.createdAt).toLocaleDateString()}
+                      </div>
                     </div>
-                    <div style={{ fontSize: 12, color: "#f87171", marginTop: 2 }}>{c.rejectionReason}</div>
+                    <span className={r.status === "accepted" ? "badge" : "badge badge-muted"}>
+                      <span className={r.status === "accepted" ? "status-dot live" : "status-dot"} />
+                      {STATUS_LABEL[r.status] ?? r.status}
+                    </span>
                   </div>
                 ))}
               </div>
-            </div>
+            )}
+          </section>
+
+          {rejected.length > 0 && (
+            <section className="card">
+              <div className="card-head">
+                <h2>Rejected conversions</h2>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {rejected.map((c) => (
+                  <div
+                    key={c.id}
+                    style={{ padding: "12px 16px", border: "1px solid var(--hair)", borderRadius: 12 }}
+                  >
+                    <div className="mono" style={{ fontSize: 12, color: "var(--text-2)" }}>
+                      {c.projectToken ? `${c.projectToken.slice(0, 10)}…${c.projectToken.slice(-6)}` : "—"}
+                      {" · "}
+                      {c.kind}
+                    </div>
+                    <div style={{ fontSize: 12, color: "#f87171", marginTop: 4 }}>{c.rejectionReason}</div>
+                  </div>
+                ))}
+              </div>
+            </section>
           )}
         </>
       )}
     </main>
-  );
-}
-
-function Stat({ label, value, note }: { label: string; value: string | number; note?: string }) {
-  return (
-    <div className="card" style={{ padding: "14px 18px", minWidth: 140 }}>
-      <div style={{ fontSize: 20, fontWeight: 700, color: "var(--text)" }}>{value}</div>
-      <div style={{ fontSize: 11, color: "var(--muted)" }}>
-        {label}
-        {note && <span style={{ opacity: 0.6 }}> · {note}</span>}
-      </div>
-    </div>
   );
 }
