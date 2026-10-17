@@ -1,22 +1,26 @@
 import { parseAbiItem } from "viem";
 import type { LaunchSource } from "./types";
 
-// Verified against docs.ponsfamily.com/docs/v2 "Indexing launches and
-// trades" sample on 2026-10-17 — exact parameter names/types/indexing.
+// Event param shapes matches what docs.ponsfamily.com/docs/v2 showed, and
+// this exact ABI fragment is independently confirmed against wealthy-org/IFO
+// (github.com/wealthy-org/IFO, src/server/pons/chain.ts), whose comment says
+// the factory address is "cross-checked on-chain at sync time: the factory
+// must report this exact fee escrow and hook, otherwise the reader refuses
+// to run" — i.e. validated against the live contract, not just docs.
 const TokenLaunched = parseAbiItem(
   "event TokenLaunched(address indexed token, address indexed curve, address indexed deployer, address pairToken, uint256 launchConfigId, uint256 graduationThreshold)"
 );
 
-// Robinhood Chain mainnet (4663) factory address, per docs.ponsfamily.com
-// (checked 2026-10-17). The legacy factory (0x0c37a24F...) only serves
-// tokens launched before the current version and accepts no new launches,
-// so it's not worth polling.
+// This is the address IFO uses (confirmed working — IFO's market page shows
+// live Pons launches). docs.ponsfamily.com's "Active" factory
+// (0xA5aAb3F0c6EeadF30Ef1D3Eb997108E976351feB) produced zero matches over
+// ~10h of real-time scanning — either stale docs or a misread on our part.
 export const PONS_SOURCES: LaunchSource[] = [
   {
-    source: "pons_v2_active",
+    source: "pons_v2",
     chainId: 4663,
-    factoryAddress: "0xA5aAb3F0c6EeadF30Ef1D3Eb997108E976351feB",
-    deployBlock: 8991118n,
+    factoryAddress: "0x7ed598bcef8bd9edd8c97a195c6d13f40801ec7e",
+    deployBlock: 0n, // unknown; relies on near-tip start, not backfill
     event: TokenLaunched,
     extract: async (log) => {
       const args = (log as unknown as { args: Record<string, unknown> }).args;
