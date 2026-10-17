@@ -28,6 +28,7 @@ export function ScoutDashboard() {
   const [conversions, setConversions] = useState<ConversionView[]>([]);
   const [pointsTotal, setPointsTotal] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [newPoints, setNewPoints] = useState<number | null>(null);
 
   useEffect(() => {
     if (!address) return;
@@ -39,7 +40,22 @@ export function ScoutDashboard() {
       .then(([referralsData, conversionsData]) => {
         setReferrals(referralsData.referrals ?? []);
         setConversions(conversionsData.conversions ?? []);
-        setPointsTotal(conversionsData.pointsTotal ?? 0);
+        const total = conversionsData.pointsTotal ?? 0;
+        setPointsTotal(total);
+
+        // Toast only when a PRIOR visit's total is on record and it went up —
+        // never on someone's very first-ever visit (nothing to compare to).
+        const key = `scouts_last_points_${address.toLowerCase()}`;
+        try {
+          const lastSeen = localStorage.getItem(key);
+          if (lastSeen !== null) {
+            const delta = total - Number(lastSeen);
+            if (delta > 0) setNewPoints(delta);
+          }
+          localStorage.setItem(key, String(total));
+        } catch {
+          // localStorage unavailable (private browsing, etc.) — skip the toast, not fatal.
+        }
       })
       .finally(() => setLoading(false));
   }, [address]);
@@ -63,6 +79,32 @@ export function ScoutDashboard() {
           not a $DAM payout.
         </p>
       </div>
+
+      {newPoints !== null && (
+        <div
+          className="card"
+          style={{
+            marginBottom: 20,
+            padding: "14px 18px",
+            border: "1px solid var(--accent)",
+            background: "rgba(184, 243, 107, 0.08)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 12,
+          }}
+        >
+          <span style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--accent)" }}>
+            <svg className="icon" style={{ width: 16, height: 16 }}>
+              <use href="#i-sparkle" />
+            </svg>
+            You earned <strong>+{newPoints} points</strong> since your last visit!
+          </span>
+          <button type="button" className="btn btn-ghost" style={{ minHeight: 28, padding: "4px 10px" }} onClick={() => setNewPoints(null)}>
+            Dismiss
+          </button>
+        </div>
+      )}
 
       {!isConnected ? (
         <div className="card">
