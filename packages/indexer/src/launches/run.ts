@@ -6,7 +6,7 @@ import { PONS_SOURCES } from "./pons";
 import { POOLS_TRADE_SOURCES } from "./poolstrade";
 import type { LaunchSource } from "./types";
 
-const ALL_SOURCES: LaunchSource[] = [...PONS_SOURCES, ...POOLS_TRADE_SOURCES];
+export const ALL_SOURCES: LaunchSource[] = [...PONS_SOURCES, ...POOLS_TRADE_SOURCES];
 
 // Same cap the existing Vercel cron indexer uses: Alchemy's free tier limits
 // eth_getLogs to a 10-block window (fromBlock to fromBlock + 9n).
@@ -25,16 +25,25 @@ const INITIAL_BACKFILL_BLOCKS = 2000n;
 // one tick's ~600 new blocks with headroom for RPC jitter.
 const MAX_WINDOWS_PER_TICK = 150;
 
+// Runs every source once, sequentially — kept for one-off/manual use. The
+// live worker uses runOneSource() per source on independent timers instead
+// (see index.ts): a busy source (lots of real matches, extra per-log RPC
+// calls) shouldn't be able to starve a quieter source of its turn within a
+// shared tick.
 export async function runLaunchIndexer() {
   for (const launchSource of ALL_SOURCES) {
-    const chain = chainById(launchSource.chainId);
-    if (!chain) continue;
+    await runOneSource(launchSource);
+  }
+}
 
-    try {
-      await indexSource(launchSource, chain);
-    } catch (err) {
-      console.error(`[launches/${launchSource.source}] run failed:`, err);
-    }
+export async function runOneSource(launchSource: LaunchSource) {
+  const chain = chainById(launchSource.chainId);
+  if (!chain) return;
+
+  try {
+    await indexSource(launchSource, chain);
+  } catch (err) {
+    console.error(`[launches/${launchSource.source}] run failed:`, err);
   }
 }
 
