@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getLaunch } from "@/lib/scouts";
 import { robinhoodMainnet } from "@/lib/chains";
+import { ReferralSection } from "./referral-section";
 
 export const dynamic = "force-dynamic";
 
@@ -106,15 +107,7 @@ export default async function ScoutsProjectPage({
         </p>
       </div>
 
-      <div className="card" style={{ padding: 20, marginBottom: 16, opacity: 0.6 }}>
-        <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", marginBottom: 6 }}>
-          Scout referral
-        </div>
-        <p style={{ fontSize: 13, color: "var(--muted)", margin: 0 }}>
-          Referral creation is not available yet — this discovery feed is Phase 1 of the Scouts
-          rollout. Check back once referral attribution ships.
-        </p>
-      </div>
+      <ReferralSection projectToken={launch.tokenAddress} chainId={launch.chainId} />
 
       <div className="card" style={{ padding: 20 }}>
         <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", marginBottom: 6 }}>

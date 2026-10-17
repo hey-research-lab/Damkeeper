@@ -8,6 +8,7 @@ import {
   timestamp,
   primaryKey,
   index,
+  uuid,
 } from "drizzle-orm/pg-core";
 
 // One row per manager deployment (LockManager / VestingManager), per chain.
@@ -205,6 +206,27 @@ export const projectLaunches = pgTable("project_launches", {
   pk: primaryKey({ columns: [t.chainId, t.launchTxHash, t.logIndex] }),
   byToken: index("project_launches_by_token").on(t.chainId, t.tokenAddress),
   byCreator: index("project_launches_by_creator").on(t.chainId, t.creatorAddress),
+}));
+
+// One row per Scout referral, per brief §15 "Referral". Created when a Scout
+// picks a detected launch; moves to 'accepted' once the project creator signs
+// the EIP-712 acceptance and it's confirmed onchain via DamkeeperReferralRegistry.
+export const referrals = pgTable("referrals", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  referralCode: text("referral_code").notNull().unique(),
+  chainId: integer("chain_id").notNull(),
+  projectToken: text("project_token").notNull(),
+  projectOwner: text("project_owner"), // set once accepted
+  scoutAddress: text("scout_address").notNull(),
+  status: text("status").default("created").notNull(), // 'created' | 'accepted' | 'expired' | 'revoked'
+  referralIdHash: text("referral_id_hash").notNull().unique(), // bytes32, used onchain
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  acceptedAt: timestamp("accepted_at", { withTimezone: true }),
+  expiresAt: timestamp("expires_at", { withTimezone: true }),
+  acceptanceTxHash: text("acceptance_tx_hash"),
+}, (t) => ({
+  byToken: index("referrals_by_token").on(t.chainId, t.projectToken),
+  byScout: index("referrals_by_scout").on(t.chainId, t.scoutAddress),
 }));
 
 export const airdropRecipients = pgTable("airdrop_recipients", {

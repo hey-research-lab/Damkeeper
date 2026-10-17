@@ -51,6 +51,9 @@ export function LaunchesFeed({ initialLaunches }: LaunchesFeedProps) {
         <p style={{ fontSize: 14, color: "var(--muted)", margin: "6px 0 0", maxWidth: 600 }}>
           Discover new token launches eligible for Scout referral.
         </p>
+        <a href="/scouts/dashboard" style={{ fontSize: 13, color: "var(--accent)", display: "inline-block", marginTop: 10 }}>
+          View your Scout dashboard →
+        </a>
       </div>
 
       {initialLaunches.length === 0 ? (
