@@ -75,8 +75,8 @@ export function ScoutDashboard() {
         </div>
         <h1>Scout dashboard</h1>
         <p className="page-lede">
-          Your referrals, verified conversions, and points. Points are a testnet simulation —
-          not a $DAM payout.
+          Your referrals, verified conversions, and points. Points track contribution —
+          they are not a $DAM payout.
         </p>
       </div>
 
@@ -174,7 +174,7 @@ export function ScoutDashboard() {
                 Points earned
               </span>
               <strong style={pointsTotal > 0 ? { fontSize: 34 } : undefined}>{pointsTotal}</strong>
-              <small>testnet simulation, not $DAM</small>
+              <small>not a $DAM payout</small>
             </div>
           </div>
 
