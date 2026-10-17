@@ -71,6 +71,13 @@
       "when": 1792229398121,
       "tag": "0009_dusty_venom",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1792229999512,
+      "tag": "0010_black_goblin_queen",
+      "breakpoints": true
     }
   ]
 }

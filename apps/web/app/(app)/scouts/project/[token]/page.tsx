@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getLaunch } from "@/lib/scouts";
 import { robinhoodMainnet } from "@/lib/chains";
@@ -46,37 +47,35 @@ export default async function ScoutsProjectPage({
 
   const explorerBase = robinhoodMainnet.blockExplorers.default.url;
 
-  return (
-    <main className="main" style={{ padding: "32px 24px", maxWidth: 820, margin: "0 auto", width: "100%" }}>
-      <a href="/scouts/launches" style={{ fontSize: 13, color: "var(--muted)" }}>
-        ← Back to launches
-      </a>
+  const initial = (launch.tokenSymbol ?? launch.tokenName ?? "?").charAt(0).toUpperCase();
 
-      <div style={{ marginTop: 16, marginBottom: 28 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-          <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0, color: "var(--text)" }}>
-            {launch.tokenName ?? "Unnamed token"}
-            {launch.tokenSymbol && (
-              <span style={{ color: "var(--muted)", fontWeight: 400 }}> · {launch.tokenSymbol}</span>
-            )}
-          </h1>
-          <span
-            className="chip"
-            style={{
-              background: "rgba(184, 243, 107, 0.1)",
-              color: "var(--accent-pale)",
-              fontSize: 11,
-            }}
-          >
-            {SOURCE_LABEL[launch.source] ?? launch.source}
-          </span>
+  return (
+    <main className="wrap" style={{ maxWidth: 820 }}>
+      <Link href="/scouts/launches" className="back-link">
+        ← Back to launches
+      </Link>
+
+      <div style={{ marginTop: 16, marginBottom: 28, display: "flex", alignItems: "center", gap: 14 }}>
+        <span className="tok-ic" style={{ width: 44, height: 44, fontSize: 18 }}>
+          {launch.tokenImage ? <img src={launch.tokenImage} alt="" /> : initial}
+        </span>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+            <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0, color: "var(--text)" }}>
+              {launch.tokenName ?? "Unnamed token"}
+              {launch.tokenSymbol && (
+                <span style={{ color: "var(--muted)", fontWeight: 400 }}> · {launch.tokenSymbol}</span>
+              )}
+            </h1>
+            <span className="badge">{SOURCE_LABEL[launch.source] ?? launch.source}</span>
+          </div>
+          <p className="mono" style={{ fontSize: 12, color: "var(--muted)", margin: "4px 0 0" }}>
+            {launch.tokenAddress}
+          </p>
+          <p style={{ fontSize: 13, color: "var(--muted)", margin: "2px 0 0" }}>
+            Launched {timeAgo(launch.launchedAt)}
+          </p>
         </div>
-        <p className="mono" style={{ fontSize: 12, color: "var(--muted)", margin: "6px 0 0" }}>
-          {launch.tokenAddress}
-        </p>
-        <p style={{ fontSize: 13, color: "var(--muted)", margin: "4px 0 0" }}>
-          Launched {timeAgo(launch.launchedAt)}
-        </p>
       </div>
 
       <div className="card" style={{ padding: 20, marginBottom: 16 }}>

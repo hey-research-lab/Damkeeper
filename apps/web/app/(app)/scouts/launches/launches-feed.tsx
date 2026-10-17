@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+import Link from "next/link";
 import type { LaunchView } from "@/lib/scouts";
 import { robinhoodMainnet } from "@/lib/chains";
 
@@ -8,6 +10,7 @@ interface LaunchesFeedProps {
 }
 
 const SOURCE_LABEL: Record<string, string> = {
+  pons_v2: "Pons V2",
   pons_v2_active: "Pons V2",
   pons_legacy: "Pons Legacy",
   pools_trade_current: "Pools.trade",
@@ -30,47 +33,32 @@ function timeAgo(unixSeconds: string) {
 
 export function LaunchesFeed({ initialLaunches }: LaunchesFeedProps) {
   return (
-    <main className="main" style={{ padding: "32px 24px", maxWidth: 1100, margin: "0 auto", width: "100%" }}>
-      <div style={{ marginBottom: 28 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <h1 style={{ fontSize: 28, fontWeight: 700, margin: 0, color: "var(--text)" }}>
-            Scouts — New Launches
-          </h1>
-          <span
-            className="chip mono"
-            style={{
-              background: "rgba(184, 243, 107, 0.12)",
-              color: "var(--accent)",
-              fontSize: 11,
-              border: "1px solid rgba(184, 243, 107, 0.3)",
-            }}
-          >
-            Robinhood Chain
-          </span>
+    <main className="wrap">
+      <div className="page-head">
+        <div className="page-eyebrow">
+          <span className="dot" />
+          Scouts · Robinhood Chain
         </div>
-        <p style={{ fontSize: 14, color: "var(--muted)", margin: "6px 0 0", maxWidth: 600 }}>
-          Discover new token launches eligible for Scout referral.
+        <h1>New launches</h1>
+        <p className="page-lede">
+          Discover new token launches eligible for Scout referral.{" "}
+          <Link href="/scouts/dashboard" style={{ color: "var(--accent)" }}>
+            View your Scout dashboard →
+          </Link>
         </p>
-        <a href="/scouts/dashboard" style={{ fontSize: 13, color: "var(--accent)", display: "inline-block", marginTop: 10 }}>
-          View your Scout dashboard →
-        </a>
       </div>
 
       {initialLaunches.length === 0 ? (
-        <div
-          style={{
-            border: "1px dashed var(--border)",
-            borderRadius: 12,
-            padding: "48px 24px",
-            textAlign: "center",
-            color: "var(--muted)",
-          }}
-        >
-          <svg className="icon" style={{ width: 28, height: 28, opacity: 0.5, marginBottom: 12 }}>
-            <use href="#i-search" />
-          </svg>
-          <div style={{ fontSize: 15, color: "var(--text-2)" }}>No launches detected yet</div>
-          <div style={{ fontSize: 13, marginTop: 4 }}>Check back soon — new launches appear automatically.</div>
+        <div className="card">
+          <div className="empty-hero">
+            <span className="ic">
+              <svg className="icon-lg" aria-hidden="true">
+                <use href="#i-search" />
+              </svg>
+            </span>
+            <h2>No launches detected yet</h2>
+            <p>New launches appear here automatically as the indexer picks them up.</p>
+          </div>
         </div>
       ) : (
         <div
@@ -91,75 +79,96 @@ export function LaunchesFeed({ initialLaunches }: LaunchesFeedProps) {
 
 function LaunchCard({ launch }: { launch: LaunchView }) {
   const explorerUrl = `${robinhoodMainnet.blockExplorers.default.url}/tx/${launch.launchTxHash}`;
+  const initial = (launch.tokenSymbol ?? launch.tokenName ?? "?").charAt(0).toUpperCase();
+  const [imageFailed, setImageFailed] = useState(false);
 
   return (
     <div
       className="card"
-      style={{ padding: 18, display: "flex", flexDirection: "column", gap: 10, position: "relative" }}
+      style={{ padding: 18, display: "flex", flexDirection: "column", gap: 12, position: "relative" }}
     >
       <a
         href={`/scouts/project/${launch.tokenAddress}`}
-        aria-label={`View ${launch.tokenAddress}`}
+        aria-label={`View ${launch.tokenName ?? launch.tokenAddress}`}
         style={{ position: "absolute", inset: 0 }}
       />
 
-      <div>
-        <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text)" }}>
-          {launch.tokenName ?? "Unnamed token"}
-          {launch.tokenSymbol && (
-            <span style={{ color: "var(--muted)", fontWeight: 400 }}> · {launch.tokenSymbol}</span>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <span className="tok-ic">
+          {launch.tokenImage && !imageFailed ? (
+            <img src={launch.tokenImage} alt="" onError={() => setImageFailed(true)} />
+          ) : (
+            initial
           )}
-        </div>
-        <div className="mono" style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>
-          {short(launch.tokenAddress)}
+        </span>
+        <div style={{ minWidth: 0 }}>
+          <div
+            style={{
+              fontSize: 14,
+              fontWeight: 600,
+              color: "var(--text)",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+            }}
+          >
+            {launch.tokenName ?? "Unnamed token"}
+            {launch.tokenSymbol && <span style={{ color: "var(--muted)", fontWeight: 400 }}> · {launch.tokenSymbol}</span>}
+          </div>
+          <div className="mono" style={{ fontSize: 11, color: "var(--faint)" }}>
+            {short(launch.tokenAddress)}
+          </div>
         </div>
       </div>
 
-      <span
-        className="chip"
-        style={{
-          alignSelf: "flex-start",
-          background: "rgba(184, 243, 107, 0.1)",
-          color: "var(--accent-pale)",
-          fontSize: 11,
-        }}
-      >
-        {SOURCE_LABEL[launch.source] ?? launch.source}
-      </span>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+        <span className="badge">{SOURCE_LABEL[launch.source] ?? launch.source}</span>
+        <span style={{ fontSize: 11, color: "var(--faint)" }}>{timeAgo(launch.launchedAt)}</span>
+      </div>
 
       <div>
-        <div style={{ fontSize: 11, color: "var(--muted)" }}>Creator</div>
-        <div className="mono" style={{ fontSize: 13, color: "var(--text-2)" }}>
+        <div style={{ fontSize: 10, color: "var(--faint)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+          Creator
+        </div>
+        <div className="mono" style={{ fontSize: 12, color: "var(--text-2)" }}>
           {short(launch.creatorAddress)}
         </div>
       </div>
 
-      <div style={{ fontSize: 12, color: "var(--muted)" }}>{timeAgo(launch.launchedAt)}</div>
-
-      <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--accent)" }}>
-        <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--accent)" }} />
-        Open to refer
-      </div>
-
-      <a
-        href={explorerUrl}
-        target="_blank"
-        rel="noreferrer"
+      <div
         style={{
-          fontSize: 12,
-          color: "var(--muted)",
-          display: "inline-flex",
+          display: "flex",
           alignItems: "center",
-          gap: 4,
-          position: "relative",
-          zIndex: 1,
+          justifyContent: "space-between",
+          gap: 10,
+          paddingTop: 10,
+          borderTop: "1px solid var(--hair)",
         }}
       >
-        <svg className="icon" style={{ width: 12, height: 12 }}>
-          <use href="#i-link" />
-        </svg>
-        View on explorer
-      </a>
+        <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--accent)" }}>
+          <span className="status-dot live" />
+          Open to refer
+        </span>
+        <a
+          href={explorerUrl}
+          target="_blank"
+          rel="noreferrer"
+          style={{
+            fontSize: 12,
+            color: "var(--muted)",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 4,
+            position: "relative",
+            zIndex: 1,
+          }}
+        >
+          Explorer
+          <svg className="icon" style={{ width: 11, height: 11 }}>
+            <use href="#i-link" />
+          </svg>
+        </a>
+      </div>
     </div>
   );
 }

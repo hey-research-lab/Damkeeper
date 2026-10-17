@@ -4,12 +4,14 @@ import { db } from "@/db/client";
 import { projectLaunches } from "@/db/schema";
 import { robinhoodMainnet, chainById } from "@/lib/chains";
 import { ensureTokenMetadata } from "@/lib/token-metadata";
+import { ensurePonsTokenImage } from "@/lib/pons-branding";
 
 export interface LaunchView {
   chainId: number;
   tokenAddress: string;
   tokenName: string | null;
   tokenSymbol: string | null;
+  tokenImage: string | null;
   creatorAddress: string;
   factoryAddress: string;
   source: string;
@@ -25,14 +27,21 @@ async function withTokenMeta(
   rows: (typeof projectLaunches.$inferSelect)[]
 ): Promise<LaunchView[]> {
   const chain = chainById(chainId);
-  if (!chain || rows.length === 0) return rows.map((r) => toLaunchView(r, null, null));
+  if (!chain || rows.length === 0) return rows.map((r) => toLaunchView(r, null, null, null));
 
   const client = createPublicClient({ chain, transport: http() });
-  const metas = await Promise.all(
-    rows.map((r) => ensureTokenMetadata(client, chainId, r.tokenAddress).catch(() => null))
-  );
+  const [metas, images] = await Promise.all([
+    Promise.all(rows.map((r) => ensureTokenMetadata(client, chainId, r.tokenAddress).catch(() => null))),
+    Promise.all(
+      rows.map((r) =>
+        r.source.startsWith("pons")
+          ? ensurePonsTokenImage(client, chainId, r.tokenAddress).catch(() => null)
+          : Promise.resolve(null)
+      )
+    ),
+  ]);
 
-  return rows.map((r, i) => toLaunchView(r, metas[i]?.name ?? null, metas[i]?.symbol ?? null));
+  return rows.map((r, i) => toLaunchView(r, metas[i]?.name ?? null, metas[i]?.symbol ?? null, images[i] ?? null));
 }
 
 export async function listLaunches(params: { chainId?: number } = {}): Promise<LaunchView[]> {
@@ -73,13 +82,15 @@ export async function getLaunch(params: {
 function toLaunchView(
   l: typeof projectLaunches.$inferSelect,
   tokenName: string | null,
-  tokenSymbol: string | null
+  tokenSymbol: string | null,
+  tokenImage: string | null
 ): LaunchView {
   return {
     chainId: l.chainId,
     tokenAddress: l.tokenAddress,
     tokenName,
     tokenSymbol,
+    tokenImage,
     creatorAddress: l.creatorAddress,
     factoryAddress: l.factoryAddress,
     source: l.source,

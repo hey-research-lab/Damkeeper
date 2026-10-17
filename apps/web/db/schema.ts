@@ -36,6 +36,7 @@ export const tokens = pgTable("tokens", {
   name: text("name"),
   decimals: integer("decimals"),
   supportNote: text("support_note"), // e.g. fee-on-transfer, rebase, restricted
+  imageUrl: text("image_url"), // Pons launchpad tokens only — see lib/pons-branding.ts
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 }, (t) => ({
   pk: primaryKey({ columns: [t.chainId, t.address] }),
