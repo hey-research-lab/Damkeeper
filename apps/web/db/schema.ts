@@ -9,6 +9,7 @@ import {
   primaryKey,
   index,
   uuid,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 
 // One row per manager deployment (LockManager / VestingManager), per chain.
@@ -206,6 +207,31 @@ export const projectLaunches = pgTable("project_launches", {
   pk: primaryKey({ columns: [t.chainId, t.launchTxHash, t.logIndex] }),
   byToken: index("project_launches_by_token").on(t.chainId, t.tokenAddress),
   byCreator: index("project_launches_by_creator").on(t.chainId, t.creatorAddress),
+}));
+
+// One row per verified conversion: an accepted referral's project completing
+// a qualifying lock or vesting action. Per brief §15 "Conversion" / §9.
+// Testnet V1: no challenge period (brief's 48-72h window is a mainnet-money
+// safeguard; verification is immediate here), no amount-threshold check
+// (brief leaves the percentage-of-supply threshold "configurable" without a
+// token-metadata source wired up yet — duration and identity checks only).
+export const conversions = pgTable("conversions", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  referralId: uuid("referral_id").notNull(),
+  kind: text("kind").notNull(), // 'lock' | 'vesting'
+  chainId: integer("chain_id").notNull(),
+  managerAddress: text("manager_address").notNull(),
+  positionId: bigint("position_id", { mode: "bigint" }).notNull(),
+  status: text("status").default("verified").notNull(), // 'verified' | 'rejected'
+  rejectionReason: text("rejection_reason"),
+  rewardPoints: integer("reward_points").default(0).notNull(),
+  policyVersion: text("policy_version").default("v1").notNull(),
+  detectedAt: timestamp("detected_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => ({
+  // One conversion per position, full stop — brief §8 rule 7: "the same
+  // transaction cannot create more than one reward record."
+  byPositionUnique: uniqueIndex("conversions_by_position_unique").on(t.chainId, t.managerAddress, t.positionId),
+  byReferral: index("conversions_by_referral").on(t.referralId),
 }));
 
 // One row per Scout referral, per brief §15 "Referral". Created when a Scout

@@ -4,6 +4,7 @@ import { positions, positionEvents, chainCheckpoints, deployments } from "@/db/s
 import { ensureTokenMetadata } from "@/lib/token-metadata";
 import { and, eq } from "drizzle-orm";
 import { chainById } from "@/lib/chains";
+import { reconcileConversions } from "@/lib/conversions";
 
 // Vercel has no persistent workers, so the indexer described in brief section 11
 // runs as a Cron-triggered serverless function instead (see vercel.json).
@@ -198,6 +199,14 @@ export async function GET(request: Request) {
     }
   }
 
-  return Response.json({ ok: true, results });
+  // Scouts Phase 3: match accepted referrals against the positions this same
+  // pass just refreshed. Cheap (only scans accepted referrals), so it runs
+  // every tick rather than needing its own schedule.
+  const conversionsResult = await reconcileConversions().catch((err) => {
+    console.error("Scouts conversion reconcile failed:", err);
+    return null;
+  });
+
+  return Response.json({ ok: true, results, conversions: conversionsResult });
 }
 

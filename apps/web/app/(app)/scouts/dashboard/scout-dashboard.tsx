@@ -4,29 +4,49 @@ import { useEffect, useState } from "react";
 import { useAccount, useConnect } from "wagmi";
 import type { ReferralView } from "@/lib/referrals";
 
+interface ConversionView {
+  id: string;
+  projectToken: string | null;
+  kind: string;
+  status: string;
+  rejectionReason: string | null;
+  rewardPoints: number;
+}
+
 export function ScoutDashboard() {
   const { address, isConnected } = useAccount();
   const { connectors, connect } = useConnect();
   const [referrals, setReferrals] = useState<ReferralView[]>([]);
+  const [conversions, setConversions] = useState<ConversionView[]>([]);
+  const [pointsTotal, setPointsTotal] = useState(0);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (!address) return;
     setLoading(true);
-    fetch(`/api/scouts/referrals?scout=${address}`)
-      .then((res) => res.json())
-      .then((data) => setReferrals(data.referrals ?? []))
+    Promise.all([
+      fetch(`/api/scouts/referrals?scout=${address}`).then((res) => res.json()),
+      fetch(`/api/scouts/conversions?scout=${address}`).then((res) => res.json()),
+    ])
+      .then(([referralsData, conversionsData]) => {
+        setReferrals(referralsData.referrals ?? []);
+        setConversions(conversionsData.conversions ?? []);
+        setPointsTotal(conversionsData.pointsTotal ?? 0);
+      })
       .finally(() => setLoading(false));
   }, [address]);
 
   const created = referrals.length;
   const accepted = referrals.filter((r) => r.status === "accepted").length;
+  const verified = conversions.filter((c) => c.status === "verified").length;
+  const rejected = conversions.filter((c) => c.status === "rejected");
+  const pending = accepted - conversions.length;
 
   return (
     <main className="main" style={{ padding: "32px 24px", maxWidth: 900, margin: "0 auto", width: "100%" }}>
       <h1 style={{ fontSize: 28, fontWeight: 700, margin: 0, color: "var(--text)" }}>Scout Dashboard</h1>
       <p style={{ fontSize: 14, color: "var(--muted)", margin: "6px 0 28px" }}>
-        Your referrals and their acceptance status.
+        Your referrals, verified conversions, and points.
       </p>
 
       {!isConnected ? (
@@ -45,8 +65,9 @@ export function ScoutDashboard() {
           <div style={{ display: "flex", gap: 16, marginBottom: 24, flexWrap: "wrap" }}>
             <Stat label="Referrals created" value={created} />
             <Stat label="Referrals accepted" value={accepted} />
-            <Stat label="Pending conversions" value="—" note="Phase 3" />
-            <Stat label="Points earned" value="—" note="Phase 3" />
+            <Stat label="Pending conversions" value={Math.max(pending, 0)} />
+            <Stat label="Verified conversions" value={verified} />
+            <Stat label="Points earned" value={pointsTotal} note="testnet, not $DAM" />
             <Stat label="Claimable $DAM" value="—" note="Phase 4" />
           </div>
 
@@ -71,6 +92,24 @@ export function ScoutDashboard() {
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+
+          {rejected.length > 0 && (
+            <div style={{ marginTop: 28 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", marginBottom: 10 }}>
+                Rejected conversions
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {rejected.map((c) => (
+                  <div key={c.id} className="card" style={{ padding: 14 }}>
+                    <div className="mono" style={{ fontSize: 12, color: "var(--text-2)" }}>
+                      {c.projectToken} · {c.kind}
+                    </div>
+                    <div style={{ fontSize: 12, color: "#f87171", marginTop: 2 }}>{c.rejectionReason}</div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </>
