@@ -8,12 +8,20 @@ interface ReferralSectionProps {
   chainId: number;
 }
 
+const STEPS = [
+  "You create a referral link for this project.",
+  "You share it with the project's team.",
+  "They connect their wallet and accept it onchain.",
+  "If they then lock, vest, or stake with Damkeeper, you get credit and points.",
+];
+
 export function ReferralSection({ projectToken, chainId }: ReferralSectionProps) {
   const { address, isConnected } = useAccount();
   const { connectors, connect } = useConnect();
   const [referralCode, setReferralCode] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const handleConnect = () => {
     const injected = connectors.find((c) => c.id === "injected") || connectors[0];
@@ -40,7 +48,17 @@ export function ReferralSection({ projectToken, chainId }: ReferralSectionProps)
     }
   };
 
-  const referralUrl = referralCode ? `/scouts/ref/${referralCode}` : null;
+  const referralPath = referralCode ? `/scouts/ref/${referralCode}` : null;
+  const referralUrl =
+    referralPath && typeof window !== "undefined" ? `${window.location.origin}${referralPath}` : referralPath;
+
+  const handleCopy = () => {
+    if (!referralUrl) return;
+    navigator.clipboard.writeText(referralUrl).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
 
   return (
     <div className="card" style={{ padding: 20, marginBottom: 16 }}>
@@ -50,41 +68,59 @@ export function ReferralSection({ projectToken, chainId }: ReferralSectionProps)
 
       {referralCode ? (
         <div>
-          <p style={{ fontSize: 13, color: "var(--muted)", margin: "0 0 8px" }}>
-            Share this link with the project's team to get attribution if they adopt Damkeeper.
+          <p style={{ fontSize: 13, color: "var(--accent)", margin: "0 0 10px", display: "flex", alignItems: "center", gap: 6 }}>
+            <svg className="icon" style={{ width: 14, height: 14 }}>
+              <use href="#i-check" />
+            </svg>
+            Link created. Send it to this project's team — once they accept it and adopt
+            Damkeeper, you'll see it here on your{" "}
+            <a href="/scouts/dashboard" style={{ color: "var(--accent)", textDecoration: "underline" }}>
+              dashboard
+            </a>
+            .
           </p>
-          <div
-            className="mono"
-            style={{
-              fontSize: 12,
-              color: "var(--accent)",
-              background: "rgba(184, 243, 107, 0.08)",
-              padding: "8px 10px",
-              borderRadius: 6,
-              wordBreak: "break-all",
-            }}
-          >
-            {referralUrl}
+          <div style={{ display: "flex", gap: 8, alignItems: "stretch" }}>
+            <div
+              className="mono"
+              style={{
+                fontSize: 12,
+                color: "var(--text-2)",
+                background: "rgba(184, 243, 107, 0.08)",
+                padding: "10px 12px",
+                borderRadius: 6,
+                wordBreak: "break-all",
+                flex: 1,
+              }}
+            >
+              {referralUrl}
+            </div>
+            <button type="button" className="btn btn-ghost" style={{ flexShrink: 0 }} onClick={handleCopy}>
+              {copied ? "Copied!" : "Copy link"}
+            </button>
           </div>
-        </div>
-      ) : !isConnected ? (
-        <div>
-          <p style={{ fontSize: 13, color: "var(--muted)", margin: "0 0 10px" }}>
-            Connect your wallet to create a referral link for this project.
-          </p>
-          <button type="button" className="btn btn-ghost" onClick={handleConnect}>
-            Connect wallet
-          </button>
         </div>
       ) : (
         <div>
-          <p style={{ fontSize: 13, color: "var(--muted)", margin: "0 0 10px" }}>
-            Create a referral link to introduce this project's team to Damkeeper.
-          </p>
-          <button type="button" className="btn btn-primary" onClick={handleCreate} disabled={loading}>
-            {loading ? "Creating…" : "Create referral"}
-          </button>
-          {error && <p style={{ fontSize: 12, color: "#f87171", marginTop: 8 }}>{error}</p>}
+          <ol style={{ margin: "0 0 14px", paddingLeft: 18, display: "flex", flexDirection: "column", gap: 4 }}>
+            {STEPS.map((step, i) => (
+              <li key={i} style={{ fontSize: 13, color: "var(--muted)" }}>
+                {step}
+              </li>
+            ))}
+          </ol>
+
+          {!isConnected ? (
+            <button type="button" className="btn btn-ghost" onClick={handleConnect}>
+              Connect wallet to create a referral
+            </button>
+          ) : (
+            <>
+              <button type="button" className="btn btn-primary" onClick={handleCreate} disabled={loading}>
+                {loading ? "Creating…" : "Create referral link"}
+              </button>
+              {error && <p style={{ fontSize: 12, color: "#f87171", marginTop: 8 }}>{error}</p>}
+            </>
+          )}
         </div>
       )}
     </div>
