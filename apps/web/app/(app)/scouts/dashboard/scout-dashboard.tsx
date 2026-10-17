@@ -111,15 +111,28 @@ export function ScoutDashboard() {
               <span>Verified conversions</span>
               <strong>{verified}</strong>
             </div>
-            <div className="metric accent">
-              <span>Points earned</span>
-              <strong>{pointsTotal}</strong>
-              <small>testnet only</small>
-            </div>
-            <div className="metric">
-              <span>Claimable $DAM</span>
-              <strong>—</strong>
-              <small>Phase 4</small>
+            <div
+              className="metric accent"
+              style={
+                pointsTotal > 0
+                  ? {
+                      gridColumn: "span 2",
+                      border: "1px solid var(--accent)",
+                      boxShadow: "0 0 0 3px rgba(184, 243, 107, 0.12)",
+                    }
+                  : undefined
+              }
+            >
+              <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                {pointsTotal > 0 && (
+                  <svg className="icon" style={{ width: 12, height: 12 }}>
+                    <use href="#i-sparkle" />
+                  </svg>
+                )}
+                Points earned
+              </span>
+              <strong style={pointsTotal > 0 ? { fontSize: 34 } : undefined}>{pointsTotal}</strong>
+              <small>testnet simulation, not $DAM</small>
             </div>
           </div>
 
